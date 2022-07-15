@@ -34,7 +34,9 @@ public class SwivelObj : MonoBehaviour
     {
         mouseSwivelAxis = Vector3.zero;
 
-        if (Input.GetMouseButton(0) && !Input.GetMouseButtonUp(0))
+        if ((Input.GetMouseButton(0) && !Input.GetMouseButtonUp(0))
+            || (Input.GetMouseButton(1) && !Input.GetMouseButtonUp(1))
+            || (Input.GetMouseButton(2) && !Input.GetMouseButtonUp(2)))
         {
             mouseSwivelAxis = Input.mousePosition - prevMousePos;
         }

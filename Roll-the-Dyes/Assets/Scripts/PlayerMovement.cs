@@ -25,7 +25,7 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private float moveSpeed = 1;
 
     [Header("Wall Ride Settings")]
-    [SerializeField] private LayerMask wallRideableLayers;
+    [SerializeField] private LayerMask wallRideableLayers = ~0;
     [SerializeField] [Range(0, 1)] private float wallRideDotThreshold = 0.25f;
     [SerializeField] [Range(0, 2)] private float wallRideTime = 1;
     [Tooltip("How long to make the player stick to walls before moving off, when attempting to move away " +
@@ -43,6 +43,7 @@ public class PlayerMovement : MonoBehaviour
     [Header("Jump Settings")]
     [Tooltip("How many extra jumps the player has. If 0, they can jump once before returning to a state " +
         "they can jump from. If 1, they can jump twice.")]
+    [SerializeField] private LayerMask groundedLayers = ~0;
     [SerializeField] private int extraJumps = 1;
     [SerializeField] private float jumpPower = 5;
     [SerializeField] [Range(0, 1)] private float groundedDotThreshold = 0.25f;
@@ -121,7 +122,7 @@ public class PlayerMovement : MonoBehaviour
     {
         GetMoveInput();
         GetJumpInput();
-
+        Debug.Log(State);
         //Inspired / adapted from http://answers.unity.com/answers/196395/view.html
         //Cast a sphere with the same radius as the player downward to see if there's something underneath.
         bool groundedCheck = Physics.SphereCast
@@ -133,14 +134,20 @@ public class PlayerMovement : MonoBehaviour
             coll.bounds.extents.y,
             Vector3.down,
             out RaycastHit groundHit,
-            0.05f
+            0.05f,
+            groundedLayers,
+            QueryTriggerInteraction.Ignore
         );
 
         //If the player touched the "ground," but hit.normal is roughly on or below the XZ plane, the hit wasn't
         //actually with the ground.
         //Also, if on jump cooldown, don't set grounded status, to account for the groundedCheck's leeway.
-        if (!onJumpCooldown && groundedCheck && Vector3.Dot(Vector3.up, groundHit.normal) >= groundedDotThreshold)
+        if (State != PlayerState.Grounded
+            && !onJumpCooldown
+            && groundedCheck && Vector3.Dot(Vector3.up, groundHit.normal) >= groundedDotThreshold)
         {
+            //Debug.Log($"<color=#777>State set to grounded; " +
+            //    $"ground hit normal was {groundHit.normal} with {groundHit.collider.name}</color>");
             State = PlayerState.Grounded;
         }
 
