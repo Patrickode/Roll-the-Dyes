@@ -15,11 +15,17 @@ public class PlayerMovement : MonoBehaviour
     /// The object to reference when moving "forward," "left," "backward," or "right."
     /// </summary>
     [SerializeField]
-    private GameObject orienter = null;
+    private Transform orienter = null;
 
-    public PlayerState State { get; private set; }
+    private PlayerState _state;
+    public PlayerState State
+    {
+        get => _state;
+        protected set => _state = value;
+    }
 
     [Header("Movement Settings")]
+    [SerializeField] private bool useOrienterUp;
     [Tooltip("The max speed the player can move via input.")]
     [SerializeField] private float maxMoveVelocity = 3.5f;
     [SerializeField] private float moveSpeed = 1;
@@ -41,13 +47,13 @@ public class PlayerMovement : MonoBehaviour
     public float WallRideTimer { get { return wallRideTimer; } }
 
     [Header("Jump Settings")]
+    [SerializeField] private LayerMask groundedLayers = ~0;
     [Tooltip("How many extra jumps the player has. If 0, they can jump once before returning to a state " +
         "they can jump from. If 1, they can jump twice.")]
-    [SerializeField] private LayerMask groundedLayers = ~0;
     [SerializeField] private int extraJumps = 1;
     [SerializeField] private float jumpPower = 5;
     [SerializeField] [Range(0, 1)] private float groundedDotThreshold = 0.25f;
-    [SerializeField] [Range(1.001f, 4)] private float fallGravityMultiplier = 2f;
+    [SerializeField] [Range(1, 15)] private float fallGravityMultiplier = 2f;
     [SerializeField] [Range(0, 0.5f)] private float jumpLeewayTime = 0.1f;
     [SerializeField] [Range(0, 0.5f)] private float jumpCooldownTime = 0.1f;
     [SerializeField] [Range(0, 0.5f)] private float jumpBufferTime = 0.1f;
@@ -70,23 +76,22 @@ public class PlayerMovement : MonoBehaviour
         Vector3 computedMoveDir = Vector3.zero;
 
         if (Input.GetKey(KeyCode.W))
-        {
             computedMoveDir += Vector3.forward;
-        }
         if (Input.GetKey(KeyCode.A))
-        {
             computedMoveDir += Vector3.left;
-        }
         if (Input.GetKey(KeyCode.S))
-        {
             computedMoveDir += Vector3.back;
-        }
         if (Input.GetKey(KeyCode.D))
-        {
             computedMoveDir += Vector3.right;
-        }
 
         moveInputVector = computedMoveDir.normalized;
+
+        if (!orienter) return;
+
+        moveInputVector = (useOrienterUp
+            ? Quaternion.LookRotation(orienter.forward, orienter.up)
+            : Quaternion.LookRotation(Vector3.ProjectOnPlane(orienter.forward, Vector3.up), Vector3.up)
+            ) * moveInputVector;
     }
     private void GetJumpInput()
     {
@@ -98,31 +103,29 @@ public class PlayerMovement : MonoBehaviour
 
     void FixedUpdate()
     {
-        //Set up a movement vector relative to the orienter using the automatically updated moveInputVector.
-        Vector3 inputDir = orienter.transform.TransformDirection(moveInputVector);
-
         //Update sticky wall status, which allows some leeway for wall jumping.
-        StickyWalls(ref inputDir);
+        StickyWalls(ref moveInputVector);
 
         //Turn movement toward a wall while airborne into upward movement, allowing wall riding.
-        TryWallRide(ref inputDir);
+        TryWallRide(ref moveInputVector);
 
         //Deaden input for a bit after wall jumping. This prevents wall jumps from getting
         //stuffed out by user input, and prevents funky behavior like wall climbing by mashing jump.
-        DeadenInputTowardWall(ref inputDir);
+        DeadenInputTowardWall(ref moveInputVector);
 
         //If wall riding, don't use gravity, and vice versa.
         rb.useGravity = State != PlayerState.WallRiding;
 
         //Now that we've settled what direction to move in, move in that direction.
-        if (inputDir != Vector3.zero) { MoveWithDirection(inputDir.normalized); }
+        if (moveInputVector != Vector3.zero)
+            MoveWithDirection(moveInputVector.normalized);
     }
 
     private void Update()
     {
         GetMoveInput();
         GetJumpInput();
-        Debug.Log(State);
+
         //Inspired / adapted from http://answers.unity.com/answers/196395/view.html
         //Cast a sphere with the same radius as the player downward to see if there's something underneath.
         bool groundedCheck = Physics.SphereCast
@@ -141,14 +144,21 @@ public class PlayerMovement : MonoBehaviour
 
         //If the player touched the "ground," but hit.normal is roughly on or below the XZ plane, the hit wasn't
         //actually with the ground.
-        //Also, if on jump cooldown, don't set grounded status, to account for the groundedCheck's leeway.
-        if (State != PlayerState.Grounded
-            && !onJumpCooldown
-            && groundedCheck && Vector3.Dot(Vector3.up, groundHit.normal) >= groundedDotThreshold)
+        if (groundedCheck && Vector3.Dot(Vector3.up, groundHit.normal) >= groundedDotThreshold)
         {
-            //Debug.Log($"<color=#777>State set to grounded; " +
-            //    $"ground hit normal was {groundHit.normal} with {groundHit.collider.name}</color>");
-            State = PlayerState.Grounded;
+            //If on jump cooldown, don't set grounded status, to account for the groundedCheck's leeway.
+            if (State != PlayerState.Grounded && !onJumpCooldown)
+            {
+                State = PlayerState.Grounded;
+            }
+        }
+        //If not already airborne,
+        else if (State != PlayerState.Airborne
+            //And setting the state wouldn't overwrite an airborne adjacent state,
+            || State != PlayerState.WallJumping
+            || State != PlayerState.WallRiding)
+        {
+            State = PlayerState.Airborne;
         }
 
         //If we're grounded, allow wall riding.
@@ -196,7 +206,7 @@ public class PlayerMovement : MonoBehaviour
         //If newVel has a y component, we're wall riding, so gravity doesn't matter and we can apply directly.
         if (newVel.y > 0)
         {
-            rb.velocity = new Vector3(newVel.x, newVel.y, newVel.z);
+            rb.velocity = newVel;
         }
         else
         {
@@ -211,50 +221,49 @@ public class PlayerMovement : MonoBehaviour
     /// <returns>Whether the player is wall riding or not.</returns>
     private void TryWallRide(ref Vector3 moveDir)
     {
-        //If we aren't grounded, haven't exceeded the max wall ride time, and are moving, we could be wall riding.
-        if (State != PlayerState.Grounded && wallRideTimer < wallRideTime && moveDir != Vector3.zero)
+        //If we're grounded, have no wall ride time left, or we aren't moving, we can't wall ride.
+        if (State == PlayerState.Grounded || wallRideTimer >= wallRideTime || moveDir == Vector3.zero)
+            return;
+
+        //Check if there is something in the direction of movement.
+        bool castSuccess = Physics.SphereCast
+        (
+            //same as grounded check in update, with different directions
+            transform.position + -moveDir * 0.025f,
+            coll.bounds.extents.y,
+            moveDir,
+            out RaycastHit hit,
+            0.05f,
+            wallRideableLayers,
+            QueryTriggerInteraction.Ignore
+        );
+
+        //If the cast hit something and the normal of that something is roughly parallel to the XZ plane,
+        //it's time to wall ride; we're moving against a wall.
+        if (castSuccess && Math.Abs(Vector3.Dot(Vector3.up, hit.normal)) <= wallRideDotThreshold)
         {
-            //Check if there is something in the direction of movement.
-            bool castSuccess = Physics.SphereCast
-            (
-                //same as grounded check in update, with different directions
-                transform.position + -moveDir * 0.025f,
-                coll.bounds.extents.y,
-                moveDir,
-                out RaycastHit hit,
-                0.05f,
-                wallRideableLayers,
-                QueryTriggerInteraction.Ignore
-            );
+            //Check if we're on jump cooldown before setting our state, to account for the leeway on
+            //the cast above.
+            if (!onJumpCooldown)
+                State = PlayerState.WallRiding;
 
-            //If the cast hit something and the normal of that something is roughly along the XZ plane,
-            //it's time to wall ride; we're moving against a wall.
-            if (castSuccess && Math.Abs(Vector3.Dot(Vector3.up, hit.normal)) <= wallRideDotThreshold)
-            {
-                //Check if we're on jump cooldown before setting our state, to account for the leeway on
-                //the cast above.
-                if (!onJumpCooldown) { State = PlayerState.WallRiding; }
+            //Add to the wall ride timer.
+            wallRideTimer += Time.deltaTime;
 
-                //Add to the wall ride timer.
-                wallRideTimer += Time.deltaTime;
+            //Get the component of moveDir that is toward the hit and subtract it from moveDir. We're about
+            //to change that component to go up the hit surface instead of into it.
+            Vector3 towardHit = Vector3.Project(moveDir, hit.normal);
+            moveDir -= towardHit;
 
-                //Get the component of moveDir that is toward the hit and subtract it from moveDir. We're about
-                //to change that component to go up the hit surface instead of into it.
-                Vector3 towardHit = Vector3.Project(moveDir, hit.normal);
-                moveDir -= towardHit;
+            //Redirect the component toward the hit upward, then add it back to velocity.
+            towardHit = Vector3.up * towardHit.magnitude;
+            moveDir += towardHit;
 
-                //Redirect the component toward the hit upward, then add it back to velocity.
-                towardHit = Vector3.up * towardHit.magnitude;
-                moveDir += towardHit;
+            //Save the normal of this wall to a variable in case of wall jumping.
+            WallHit = hit;
 
-                //Save the normal of this wall to a variable in case of wall jumping.
-                WallHit = hit;
-
-                return;
-            }
+            return;
         }
-
-        State = State != PlayerState.WallJumping ? PlayerState.Airborne : State;
     }
 
     private void TryJump()

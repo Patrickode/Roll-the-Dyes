@@ -235,7 +235,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   rb: {fileID: 46300510}
   coll: {fileID: 46300505}
-  orienter: {fileID: 963194225}
+  orienter: {fileID: 560648096}
+  useOrienterUp: 0
   maxMoveVelocity: 3.5
   moveSpeed: 1
   wallRideableLayers:
@@ -249,9 +250,9 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 4294967295
   extraJumps: 1
-  jumpPower: 7
+  jumpPower: 10
   groundedDotThreshold: 0.175
-  fallGravityMultiplier: 2
+  fallGravityMultiplier: 3
   jumpLeewayTime: 0.1
   jumpCooldownTime: 0.1
   jumpBufferTime: 0.1
@@ -264,8 +265,8 @@ Rigidbody:
   m_GameObject: {fileID: 46300504}
   serializedVersion: 2
   m_Mass: 1
-  m_Drag: 1
-  m_AngularDrag: 0.05
+  m_Drag: 2.5
+  m_AngularDrag: 0.1
   m_UseGravity: 1
   m_IsKinematic: 0
   m_Interpolate: 0
@@ -368,6 +369,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   digitalRotateSpeed: 125
   mouseRotateSpeed: 22.5
+  maxMouseDelta: 100
 --- !u!114 &560648098
 MonoBehaviour:
   m_ObjectHideFlags: 0
