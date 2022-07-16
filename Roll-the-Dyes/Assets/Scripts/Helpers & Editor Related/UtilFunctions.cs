@@ -306,6 +306,14 @@ public static class UtilFunctions
         return result;
     }
 
+    public static Color HSVAtoRGBA(float h, float s, float v, float a)
+    {
+        var rgba = Color.HSVToRGB(h, s, v);
+        rgba.a = a;
+        return rgba;
+    }
+    public static Color HSVAtoRGBA(Vector4 hsva) => HSVAtoRGBA(hsva.x, hsva.y, hsva.z, hsva.w);
+
     public static Vector3 ClampComponents(Vector3 v,
         float xMin, float xMax,
         float yMin, float yMax,

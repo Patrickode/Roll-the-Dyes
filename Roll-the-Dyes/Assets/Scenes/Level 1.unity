@@ -137,9 +137,11 @@ GameObject:
   - component: {fileID: 46300505}
   - component: {fileID: 46300510}
   - component: {fileID: 46300509}
+  - component: {fileID: 46300511}
+  - component: {fileID: 46300512}
   m_Layer: 0
   m_Name: Player
-  m_TagString: Untagged
+  m_TagString: Player
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -272,6 +274,38 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 0
+--- !u!114 &46300511
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 46300504}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6e1982b78ab89b945af6c99a59c6c4a0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  getDyedDuration: 0.25
+--- !u!114 &46300512
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 46300504}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e857c5da62bd2414aab9ce9240fb9a89, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  dyeableComponent: {fileID: 46300511}
+  tagsToDye:
+    _serializedValues:
+    - value:
+        _value: Dyable
+      isDuplicate: 0
+      index: 0
 --- !u!1 &193406365
 GameObject:
   m_ObjectHideFlags: 0
@@ -316,12 +350,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   levelColor: {r: 1, g: 0, b: 0, a: 1}
+  whiteThreshold: 0
   matsWithColor:
   - {fileID: 2100000, guid: fde2168a6993bed449205da71c005303, type: 2}
+  setHue: 1
   setSaturation: 0
   setValue: 0
   setAlpha: 0
-  levelColHSV: {x: 0, y: 1, z: 1}
+  levelColHSV: {x: 0, y: 1, z: 1, w: 1}
 --- !u!1 &560648095
 GameObject:
   m_ObjectHideFlags: 0
