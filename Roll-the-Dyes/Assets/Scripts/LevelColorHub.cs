@@ -7,7 +7,7 @@ public class LevelColorHub : MonoBehaviour
     [SerializeField] private Color levelColor = Color.red;
     [Tooltip("White things should be dyed regardless if saturation isn't set. " +
         "Saturation values below/equal to this will be considered white.")]
-    [SerializeField] [Range(0, 1)] private float whiteThreshold = 0;
+    [SerializeField] [Range(0, 1)] private float whiteThreshold = Mathf.Epsilon;
     [SerializeField] private Material[] matsWithColor;
     [SerializeField] private bool setHue;
     [SerializeField] private bool setSaturation;
@@ -29,13 +29,7 @@ public class LevelColorHub : MonoBehaviour
 
     private void Init()
     {
-        if (Application.isPlaying && Instance && Instance != this)
-        {
-            Debug.LogError($"There's already an instance of LevelColorHub in the scene ({Instance.name})!");
-            Destroy(this);
-        }
-        else
-            Instance = this;
+        Instance = this;
 
         Color.RGBToHSV(levelColor, out levelColHSV.x, out levelColHSV.y, out levelColHSV.z);
         levelColHSV.w = levelColor.a;
@@ -55,14 +49,14 @@ public class LevelColorHub : MonoBehaviour
 
             Color.RGBToHSV(mat.color, out switchHSVCache.x, out switchHSVCache.y, out switchHSVCache.z);
             switchHSVCache.x = setHue
-                ? switchHSVCache.x
-                : levelColHSV.x;
+                ? levelColHSV.x
+                : switchHSVCache.x;
             switchHSVCache.y = setSaturation || switchHSVCache.y <= whiteThreshold
-                ? switchHSVCache.y
-                : levelColHSV.y;
+                ? levelColHSV.y
+                : switchHSVCache.y;
             switchHSVCache.z = setValue
-                ? switchHSVCache.z
-                : levelColHSV.z;
+                ? levelColHSV.z
+                : switchHSVCache.z;
 
             var targetColor = Color.HSVToRGB(switchHSVCache.x, switchHSVCache.y, switchHSVCache.z);
             targetColor.a = setAlpha ? levelColor.a : mat.color.a;

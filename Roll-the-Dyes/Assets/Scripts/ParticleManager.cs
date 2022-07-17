@@ -14,6 +14,8 @@ public class ParticleManager : MonoBehaviour
 
     private void OnSpawnParticles(int particleTypeIndex, Vector3 spawnPos, Vector3 spawnNormal)
     {
+        if (particleTypeIndex < 0 || particleTypeIndex > pSystems.Length) return;
+
         var spawnedParticles = Instantiate(pSystems[particleTypeIndex], spawnPos, Quaternion.identity);
         spawnedParticles.transform.up = spawnNormal;
     }

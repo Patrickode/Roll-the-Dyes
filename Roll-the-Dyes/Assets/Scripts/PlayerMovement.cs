@@ -7,10 +7,10 @@ public enum PlayerState { Grounded, Airborne, WallRiding, WallJumping }
 
 public class PlayerMovement : MonoBehaviour
 {
-    [SerializeField]
-    private Rigidbody rb = null;
-    [SerializeField]
-    private Collider coll = null;
+    [SerializeField] private DyeApplier playerDye;
+    [Space(10)]
+    [SerializeField] private Rigidbody rb = null;
+    [SerializeField] private Collider coll = null;
     /// <summary>
     /// The object to reference when moving "forward," "left," "backward," or "right."
     /// </summary>
@@ -57,6 +57,7 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] [Range(0, 0.5f)] private float jumpLeewayTime = 0.1f;
     [SerializeField] [Range(0, 0.5f)] private float jumpCooldownTime = 0.1f;
     [SerializeField] [Range(0, 0.5f)] private float jumpBufferTime = 0.1f;
+    [SerializeField] float jumpParticleOffset;
     private bool jumpLeeway;
     private float leewayTimer;
     private PlayerState lastJumpState;
@@ -278,6 +279,13 @@ public class PlayerMovement : MonoBehaviour
             {
                 extraJumpsLeft--;
                 lastJumpState = State;
+                if (playerDye)
+                {
+                    if (playerDye.SplatDye())
+                    {
+                        ParticleManager.SpawnParticles(1, transform.position, Vector3.up);
+                    }
+                }
             }
 
             //Start a cooldown on jumping, so the player can't jump again immediately.
@@ -318,7 +326,7 @@ public class PlayerMovement : MonoBehaviour
             //Spawn a jump poof at this position with a normal depending on the type of jump.
             ParticleManager.SpawnParticles?.Invoke(
                 0,
-                transform.position - jumpDir * transform.localScale.y / 2,
+                transform.position + (-jumpDir * (transform.localScale.y / 2)) + (jumpDir * jumpParticleOffset),
                 jumpDir
             );
         }
@@ -332,13 +340,13 @@ public class PlayerMovement : MonoBehaviour
         {
             //We subtract fallGrav by 1 because gravity is already added once per frame; to make fallGrav
             //accurate, we need to subtract it by 1. fallGrav can't be 1 due to its range property, so no zeroes
-            rb.velocity += Vector3.up * Physics.gravity.y * (fallGravityMultiplier - 1) * Time.deltaTime;
+            rb.velocity += (fallGravityMultiplier - 1) * Physics.gravity.y * Time.deltaTime * Vector3.up;
         }
         //Otherwise, if the player has reached the peak of their jump, increase gravity to make the jump feel
         //weightier
         else if (rb.velocity.y < 0)
         {
-            rb.velocity += Vector3.up * Physics.gravity.y * (fallGravityMultiplier - 1) * Time.deltaTime;
+            rb.velocity += (fallGravityMultiplier - 1) * Physics.gravity.y * Time.deltaTime * Vector3.up;
         }
     }
 
