@@ -19,19 +19,13 @@ public class FollowObj : MonoBehaviour
 
     void Update()
     {
-        if (focalObj)
-        {
-            transform.position = new Vector3
-                (
-                    focalObj.transform.position.x + camOffset.x,
-                    focalObj.transform.position.y + camOffset.y,
-                    focalObj.transform.position.z + camOffset.z
-                );
+        if (!focalObj) return;
 
-            if (lookAtObj)
-            {
-                transform.LookAt(focalObj.transform);
-            }
+        transform.position = focalObj.transform.position + camOffset;
+
+        if (lookAtObj)
+        {
+            transform.LookAt(focalObj.transform);
         }
     }
 }
